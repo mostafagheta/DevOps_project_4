@@ -5,7 +5,8 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "build": "node -e \"console.log('No build step defined for UI - placeholder build succeeded.')\""
+    "build": "node -e \"console.log('No build step defined for UI - placeholder build succeeded.')\"",
+    "test": "echo \"No tests defined for UI - placeholder test succeeded.\""
   },
   "repository": {
     "type": "git",
