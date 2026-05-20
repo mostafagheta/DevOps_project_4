@@ -101,6 +101,21 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
 
+      - name: Generate Trivy JSON report
+        if: always()
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
+          echo "Generating Trivy JSON report for $IMAGE"
+          # trivy is installed by the previous action and should be available in PATH
+          trivy image --format json --output trivy-report.json "$IMAGE" || true
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.json
+
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}

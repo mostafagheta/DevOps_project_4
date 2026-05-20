@@ -12,3 +12,14 @@ If the `SonarQube Quality Gate` step fails with a 403 when calling Sonar, check 
 3. The scanner produced a `report-task.txt` file under `./UI/.scannerwork/report-task.txt` — the workflow now prints this file during CI for debugging.
 
 For local debugging, you can run the Sonar scanner and ensure `./UI/.scannerwork/report-task.txt` is created before the quality gate step runs.
+
+Trivy report
+-------------
+
+The CI pipeline now produces a Trivy JSON report artifact named `trivy-report` (downloadable from the Actions run). It contains the full vulnerability details (CVE ids, severities and remediation suggestions).
+
+To reproduce locally and generate the same JSON report:
+
+```bash
+trivy image --format json --output trivy-report.json yourrepo/weather-ui:TAG
+```
