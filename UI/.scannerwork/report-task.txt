@@ -1,0 +1,7 @@
+organization=mostafagheta13
+projectKey=weather-ui
+serverUrl=https://sonarcloud.io
+serverVersion=8.0.0.87788
+dashboardUrl=https://sonarcloud.io/dashboard?id=weather-ui
+ceTaskId=AZ5EXupb8JgkipMwpCie
+ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZ5EXupb8JgkipMwpCie
