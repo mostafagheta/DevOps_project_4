@@ -45,6 +45,7 @@ jobs:
             -Dsonar.projectKey=weather-ui
             -Dsonar.organization=mostafagheta13
             -Dsonar.sources=.
+            -Dsonar.branch.name=${{ github.ref_name }}
 
       - name: SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1.1.0
