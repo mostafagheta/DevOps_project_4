@@ -41,6 +41,10 @@ jobs:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           projectBaseDir: ./UI
+          args: >
+            -Dsonar.projectKey=weather-ui
+            -Dsonar.organization=mostafagheta13
+            -Dsonar.sources=.
 
       - name: SonarQube Quality Gate
         uses: SonarSource/sonarqube-quality-gate-action@v1.1.0
