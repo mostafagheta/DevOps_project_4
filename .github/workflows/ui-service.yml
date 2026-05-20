@@ -55,6 +55,18 @@ jobs:
         with:
           scanMetadataReportFile: ./UI/.scannerwork/report-task.txt
 
+      - name: Debug Sonar scanner report (for troubleshooting)
+        if: always()
+        run: |
+          echo "=== Listing .scannerwork folder (UI) ==="
+          if [ -d "./UI/.scannerwork" ]; then ls -la ./UI/.scannerwork; else echo "./UI/.scannerwork does not exist"; fi
+          echo "=== report-task.txt contents (if exists) ==="
+          if [ -f "./UI/.scannerwork/report-task.txt" ]; then sed -n '1,200p' ./UI/.scannerwork/report-task.txt; else echo "report-task.txt not found"; fi
+          echo "=== SONAR_HOST_URL (from secrets) ==="
+          echo "${{ secrets.SONAR_HOST_URL }}"
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
         with:
