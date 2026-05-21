@@ -122,16 +122,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image (with cache, do not push yet)
-        uses: docker/build-push-action@v4
-        with:
-          context: ./UI
-          file: ./UI/Dockerfile
-          push: false
-          load: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Build image into local Docker daemon
+        run: |
+          echo "Building image into local Docker daemon"
+          docker build -f ./UI/Dockerfile -t ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }} ./UI
+
+      - name: Verify image exists
+        run: |
+          docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep "${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}" || (echo "Image not found" && exit 1)
 
   trivy-scan:
     needs: docker-build
