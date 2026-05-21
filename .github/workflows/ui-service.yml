@@ -9,13 +9,12 @@ on:
       - 'UI/**'
 
 jobs:
-  build-test-scan-push:
+  # Build and test the UI. Caches npm to speed up subsequent runs.
+  build-and-test:
     runs-on: ubuntu-latest
-
     defaults:
       run:
         working-directory: ./UI
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -25,14 +24,37 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: npm-cache-${{ runner.os }}-$(hashFiles('UI/package-lock.json'))
+
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Application
         run: npm run build
 
       - name: Run Tests
         run: npm test -- --watchAll=false
+
+  # Sonar scan can run in parallel with build/test since it only needs source files.
+  sonar-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./UI
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v2
@@ -52,22 +74,21 @@ jobs:
         if: always()
         run: |
           echo "=== Listing .scannerwork folder (UI) ==="
-          if [ -d "./UI/.scannerwork" ]; then ls -la ./UI/.scannerwork; else echo "./UI/.scannerwork does not exist"; fi
+          if [ -d "./.scannerwork" ]; then ls -la ./.scannerwork; else echo "./.scannerwork does not exist"; fi
           echo "=== report-task.txt contents (if exists) ==="
-          if [ -f "./UI/.scannerwork/report-task.txt" ]; then sed -n '1,200p' ./UI/.scannerwork/report-task.txt; else echo "report-task.txt not found"; fi
-          echo "=== SONAR_HOST_URL (from secrets) ==="
-          echo "${{ secrets.SONAR_HOST_URL }}"
+          if [ -f "./.scannerwork/report-task.txt" ]; then sed -n '1,200p' ./.scannerwork/report-task.txt; else echo "report-task.txt not found"; fi
         env:
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      # - name: SonarQube Quality Gate
-      #   uses: SonarSource/sonarqube-quality-gate-action@v1.1.0
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      #   with:
-      #     scanMetadataReportFile: ./UI/.scannerwork/report-task.txt
+  # OWASP dependency check is independent and can run in parallel.
+  dependency-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./UI
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
@@ -83,15 +104,49 @@ jobs:
           name: ui-owasp-report
           path: reports
 
+  # Docker build (uses buildx and GitHub Actions cache to speed up layer caching). It will push the image
+  # so that Trivy can scan the pushed image. Runs in parallel with other independent jobs.
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Docker Login
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Docker Image
-        run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }} .
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image (with cache)
+        uses: docker/build-push-action@v4
+        with:
+          context: ./UI
+          file: ./UI/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Trivy scans the pushed image. Depends on docker-build job to ensure image is available.
+  trivy-scan:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Restore Trivy cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Trivy Scan
         uses: aquasecurity/trivy-action@master
@@ -106,7 +161,6 @@ jobs:
         run: |
           IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
           echo "Generating Trivy JSON report for $IMAGE"
-          # trivy is installed by the previous action and should be available in PATH
           trivy image --format json --output trivy-report.json "$IMAGE" || true
 
       - name: Upload Trivy report
@@ -115,7 +169,3 @@ jobs:
         with:
           name: trivy-report
           path: trivy-report.json
-
-      - name: Push Docker Image
-        run: |
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
