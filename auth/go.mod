@@ -2,7 +2,7 @@ module weatherapp.com/auth
 
 replace weatherapp.com/auth/authdb => ./authdb
 
-go 1.23.0
+go 1.23
 
 require (
 	github.com/gin-contrib/cors v1.6.0
