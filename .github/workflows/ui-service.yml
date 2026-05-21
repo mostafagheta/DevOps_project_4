@@ -208,6 +208,21 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Download built image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: weather-ui-image
+          path: .
+
+      - name: Load image into Docker daemon (for push)
+        run: |
+          if [ -f weather-ui.tar ]; then
+            echo "Loading weather-ui.tar into Docker daemon for push"
+            docker load -i weather-ui.tar || true
+          else
+            echo "No weather-ui.tar artifact found"
+          fi
+
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
