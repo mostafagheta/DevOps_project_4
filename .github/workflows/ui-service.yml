@@ -131,12 +131,40 @@ jobs:
         run: |
           docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep "${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}" || (echo "Image not found" && exit 1)
 
+      - name: Save image artifact
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-ui:${{ github.sha }}
+          echo "Saving $IMAGE to weather-ui.tar"
+          docker save -o weather-ui.tar "$IMAGE"
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weather-ui-image
+          path: weather-ui.tar
+
   trivy-scan:
     needs: docker-build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Download built image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: weather-ui-image
+          path: .
+
+      - name: Load image into Docker daemon (if artifact present)
+        run: |
+          if [ -f weather-ui.tar ]; then
+            echo "Loading weather-ui.tar into Docker daemon"
+            docker load -i weather-ui.tar || true
+          else
+            echo "No weather-ui.tar artifact found"
+          fi
+
 
       - name: Restore Trivy cache
         uses: actions/cache@v4
