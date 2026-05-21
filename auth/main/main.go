@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt/v4"
 	"net/http"
 	"os"
 	"time"
@@ -135,15 +135,13 @@ func createUser(c *gin.Context) {
 }
 func GenerateJWT(userName string) (string, error) {
 	var mySigningKey = []byte(secretKey)
-	token := jwt.New(jwt.SigningMethodHS256)
-	claims := token.Claims.(jwt.MapClaims)
-
-	claims["authorized"] = true
-	claims["username"] = userName
-	claims["exp"] = time.Now().Add(time.Minute * 30).Unix()
-
+	claims := jwt.MapClaims{
+		"authorized": true,
+		"username":   userName,
+		"exp":        time.Now().Add(time.Minute * 30).Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString(mySigningKey)
-
 	if err != nil {
 		return "", err
 	}
