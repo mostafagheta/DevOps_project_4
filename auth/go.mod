@@ -4,8 +4,6 @@ replace weatherapp.com/auth/authdb => ./authdb
 
 go 1.22
 
-toolchain go1.23.0
-
 require (
 	github.com/gin-contrib/cors v1.6.0
 	github.com/gin-gonic/gin v1.9.1
