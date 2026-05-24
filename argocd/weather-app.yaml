@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: weatherapp-weather
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: weather=mostafagheta/weather-weather
+    argocd-image-updater.argoproj.io/weather.update-strategy: latest
+    argocd-image-updater.argoproj.io/write-back-method: git
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mostafagheta/DevOps_project_4.git
+    targetRevision: HEAD
+    path: K8S/weather
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: weather
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

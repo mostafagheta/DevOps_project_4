@@ -1,200 +1,226 @@
 name: Weather Service CI/CD
 
 on:
-    push:
-        paths:
-            - "weather/**"
-    pull_request:
-        paths:
-            - "weather/**"
+  push:
+    paths:
+      - "weather/**"
+  pull_request:
+    paths:
+      - "weather/**"
 
 jobs:
-    build-and-test:
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: ./weather
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./weather
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Set up Python 3.8
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.8"
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
 
-            - name: Install dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-            # No tests found in weather service, skipping run tests step
-            # If tests are added in the future, add 'pytest' or similar here.
+      # No tests found in weather service, skipping run tests step
+      # If tests are added in the future, add 'pytest' or similar here.
 
-    sonar-scan:
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: ./weather
-        needs: build-and-test
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  sonar-scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./weather
+    needs: build-and-test
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: SonarQube Scan
-              uses: SonarSource/sonarqube-scan-action@v2
-              env:
-                  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-                  SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-              with:
-                  projectBaseDir: .
-                  args: >
-                      -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
-                      -Dsonar.projectKey=weather-weather
-                      -Dsonar.organization=mostafagheta13
-                      -Dsonar.sources=.
-                      -Dsonar.branch.name=${{ github.ref_name }}
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }}
+            -Dsonar.projectKey=weather-weather
+            -Dsonar.organization=mostafagheta13
+            -Dsonar.sources=.
+            -Dsonar.branch.name=${{ github.ref_name }}
 
-            - name: Debug Sonar scanner report (for troubleshooting)
-              if: always()
-              run: |
-                  echo "=== Listing .scannerwork folder (weather) ==="
-                  if [ -d "./.scannerwork" ]; then ls -la ./.scannerwork; else echo "./.scannerwork does not exist"; fi
-                  echo "=== report-task.txt contents (if exists) ==="
-                  if [ -f "./.scannerwork/report-task.txt" ]; then sed -n '1,200p' ./.scannerwork/report-task.txt; else echo "report-task.txt not found"; fi
-              env:
-                  SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: Debug Sonar scanner report (for troubleshooting)
+        if: always()
+        run: |
+          echo "=== Listing .scannerwork folder (weather) ==="
+          if [ -d "./.scannerwork" ]; then ls -la ./.scannerwork; else echo "./.scannerwork does not exist"; fi
+          echo "=== report-task.txt contents (if exists) ==="
+          if [ -f "./.scannerwork/report-task.txt" ]; then sed -n '1,200p' ./.scannerwork/report-task.txt; else echo "report-task.txt not found"; fi
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-    dependency-check:
-        runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: ./weather
-        needs: sonar-scan
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  dependency-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./weather
+    needs: sonar-scan
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: OWASP Dependency Check
-              uses: dependency-check/Dependency-Check_Action@main
-              with:
-                  project: weather-service
-                  path: ./weather
-                  format: HTML
-                  out: reports
+      - name: OWASP Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: weather-service
+          path: ./weather
+          format: HTML
+          out: reports
 
-            - name: Upload OWASP Report
-              uses: actions/upload-artifact@v4
-              with:
-                  name: weather-owasp-report
-                  path: reports
+      - name: Upload OWASP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: weather-owasp-report
+          path: reports
 
-    docker-build:
-        runs-on: ubuntu-latest
-        needs: dependency-check
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: dependency-check
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Build image into local Docker daemon
-              run: |
-                  echo "Building weather image into local Docker daemon"
-                  docker build -f ./weather/Dockerfile -t ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }} ./weather
+      - name: Build image into local Docker daemon
+        run: |
+          echo "Building weather image into local Docker daemon"
+          docker build -f ./weather/Dockerfile -t ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }} ./weather
 
-            - name: Verify image exists
-              run: |
-                  docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep "${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}" || (echo "Image not found" && exit 1)
+      - name: Verify image exists
+        run: |
+          docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep "${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}" || (echo "Image not found" && exit 1)
 
-            - name: Save image artifact
-              run: |
-                  IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
-                  echo "Saving $IMAGE to weather-weather.tar"
-                  docker save -o weather-weather.tar "$IMAGE"
+      - name: Save image artifact
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
+          echo "Saving $IMAGE to weather-weather.tar"
+          docker save -o weather-weather.tar "$IMAGE"
 
-            - name: Upload image artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: weather-weather-image
-                  path: weather-weather.tar
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: weather-weather-image
+          path: weather-weather.tar
 
-    trivy-scan:
-        needs: docker-build
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  trivy-scan:
+    needs: docker-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Download built image artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: weather-weather-image
-                  path: .
+      - name: Download built image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: weather-weather-image
+          path: .
 
-            - name: Load image into Docker daemon (if artifact present)
-              run: |
-                  if [ -f weather-weather.tar ]; then
-                    echo "Loading weather-weather.tar into Docker daemon"
-                    docker load -i weather-weather.tar || true
-                  else
-                    echo "No weather-weather.tar artifact found"
-                  fi
+      - name: Load image into Docker daemon (if artifact present)
+        run: |
+          if [ -f weather-weather.tar ]; then
+            echo "Loading weather-weather.tar into Docker daemon"
+            docker load -i weather-weather.tar || true
+          else
+            echo "No weather-weather.tar artifact found"
+          fi
 
-            - name: Restore Trivy cache
-              uses: actions/cache@v4
-              with:
-                  path: ~/.cache/trivy
-                  key: trivy-db-${{ runner.os }}-${{ hashFiles('weather/requirements.txt') }}
+      - name: Restore Trivy cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('weather/requirements.txt') }}
 
-            - name: Trivy Scan
-              uses: aquasecurity/trivy-action@master
-              with:
-                  image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
-                  format: table
-                  exit-code: 1
-                  severity: CRITICAL,HIGH
+      - name: Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
+          format: table
+          exit-code: 1
+          severity: CRITICAL,HIGH
 
-            - name: Generate Trivy JSON report
-              if: always()
-              run: |
-                  IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
-                  echo "Generating Trivy JSON report for $IMAGE"
-                  trivy image --format json --output trivy-report.json "$IMAGE" || true
+      - name: Generate Trivy JSON report
+        if: always()
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
+          echo "Generating Trivy JSON report for $IMAGE"
+          trivy image --format json --output trivy-report.json "$IMAGE" || true
 
-            - name: Upload Trivy report
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: trivy-report-weather
-                  path: trivy-report.json
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-weather
+          path: trivy-report.json
 
-    docker-push:
-        needs: trivy-scan
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Code
-              uses: actions/checkout@v4
+  docker-push:
+    needs: trivy-scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-            - name: Docker Login
-              uses: docker/login-action@v3
-              with:
-                  username: ${{ secrets.DOCKERHUB_USERNAME }}
-                  password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-            - name: Download built image artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: weather-weather-image
-                  path: .
+      - name: Download built image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: weather-weather-image
+          path: .
 
-            - name: Load image into Docker daemon (for push)
-              run: |
-                  if [ -f weather-weather.tar ]; then
-                    echo "Loading weather-weather.tar into Docker daemon for push"
-                    docker load -i weather-weather.tar || true
-                  else
-                    echo "No weather-weather.tar artifact found"
-                  fi
+      - name: Load image into Docker daemon (for push)
+        run: |
+          if [ -f weather-weather.tar ]; then
+            echo "Loading weather-weather.tar into Docker daemon for push"
+            docker load -i weather-weather.tar || true
+          else
+            echo "No weather-weather.tar artifact found"
+          fi
 
-            - name: Push Docker Image
-              run: |
-                  docker push ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
+      - name: Push Docker Image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}
+
+  update-manifests:
+    needs: docker-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update K8s manifest with new image tag
+        run: |
+          NEW_IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:${{ github.sha }}"
+          sed -i "s|image: ${{ secrets.DOCKERHUB_USERNAME }}/weather-weather:.*|image: ${NEW_IMAGE}|g" K8S/weather/deployment.yaml
+          echo "Updated K8S/weather/deployment.yaml with image: ${NEW_IMAGE}"
+
+      - name: Commit and push manifest changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add K8S/weather/deployment.yaml
+          git diff --cached --quiet || git commit -m "ci: update weather image to ${{ github.sha }}"
+          git push

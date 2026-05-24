@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: weatherapp-ui
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: ui=mostafagheta/weather-ui
+    argocd-image-updater.argoproj.io/ui.update-strategy: latest
+    argocd-image-updater.argoproj.io/write-back-method: git
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mostafagheta/DevOps_project_4.git
+    targetRevision: HEAD
+    path: K8S/ui
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ui
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

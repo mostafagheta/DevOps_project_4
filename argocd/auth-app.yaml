@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: weatherapp-auth
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: auth=mostafagheta/weather-auth
+    argocd-image-updater.argoproj.io/auth.update-strategy: latest
+    argocd-image-updater.argoproj.io/write-back-method: git
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/mostafagheta/DevOps_project_4.git
+    targetRevision: HEAD
+    path: K8S/auth
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: authentication
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
