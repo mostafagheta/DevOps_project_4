@@ -31,7 +31,7 @@ spec:
         runAsUser: 1000
       containers:
         - name: weatherapp-weather
-          image: mostafagheta/weather-weather:081106b5c5e685588236409b852b2a35ec4aaa82
+          image: mostafagheta/weather-weather:393264fc4b1cac7e182526f582222e8ff87043bf
           imagePullPolicy: IfNotPresent
           resources:
             requests:
