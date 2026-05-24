@@ -116,10 +116,6 @@ Notes and caveats
 - Docker image base selection impacts Trivy results: `node:20-alpine` and `alpine:latest` are used; image-level OS CVEs may still surface in Trivy scans depending on upstream patches.
 - `auth/authdb/authdb.go` currently uses MD5 hashing and unparameterized SQL — this is insecure for production and should be refactored (see TODOs above).
 
-Contact / Maintainer
---------------------
-Ahmed Elfakharany
-
 License
 -------
 This project has no explicit license file. Add a LICENSE if you plan to open-source it.
