@@ -250,4 +250,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add K8S/ui/deployment.yaml
           git diff --cached --quiet || git commit -m "ci: update ui image to ${{ github.sha }}"
+          git pull --rebase origin main
           git push
