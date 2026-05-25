@@ -4,14 +4,13 @@ metadata:
   name: weatherapp-ui
   namespace: ui
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: ui
   ports:
     - protocol: TCP
       port: 3000
       targetPort: 3000
-      nodePort: 30000
 ---
 apiVersion: apps/v1
 kind: Deployment
