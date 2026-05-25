@@ -6,13 +6,9 @@ A comprehensive, multi-service weather application demonstration project. This p
 
 ## 📱 Application Preview
 
-````carousel
 ![Main Dashboard Interface](images/image%20copy.png)
-<!-- slide -->
 ![Weather Search Functionality](images/image%20copy%202.png)
-<!-- slide -->
 ![Login & Authentication View](images/image%20copy%203.png)
-````
 
 ---
 
@@ -54,13 +50,9 @@ The project implements a robust "Shift-Left" security approach through automated
 5.  **Automated Tagging:** Seamless push to Docker Hub with unique commit-based tags.
 6.  **Manifest Automation:** Automated updates to Kubernetes manifests in the repository to trigger GitOps sync.
 
-````carousel
 ![SonarQube Results](images/image%20copy%204.png)
-<!-- slide -->
 ![Trivy Scan Results](images/image%20copy%205.png)
-<!-- slide -->
 ![Dependency Check](images/image%20copy%206.png)
-````
 
 ---
 
@@ -109,13 +101,9 @@ kubectl apply -f argocd/weather-app.yaml
 
 ## 📸 Project Gallery
 
-````carousel
 ![Service Dashboard](images/image%20copy%208.png)
-<!-- slide -->
 ![Infrastructure Overview](images/image%20copy%209.png)
-<!-- slide -->
 ![Network Topology](images/image%20copy%2010.png)
-````
 
 ---
 *Created by [Mostafa Gheta](https://github.com/mostafagheta)*
