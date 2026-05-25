@@ -4,6 +4,16 @@
 
 A comprehensive, multi-service weather application demonstration project. This project showcases a modern cloud-native architecture, leveraging **Infrastructure as Code (Terraform)**, **DevSecOps Pipeline automation (GitHub Actions)**, and **GitOps-driven deployment (ArgoCD)** on **Google Kubernetes Engine (GKE)**.
 
+## 📱 Application Preview
+
+````carousel
+![Main Dashboard Interface](images/image%20copy.png)
+<!-- slide -->
+![Weather Search Functionality](images/image%20copy%202.png)
+<!-- slide -->
+![Login & Authentication View](images/image%20copy%203.png)
+````
+
 ---
 
 ## 🏗️ Architecture Overview
