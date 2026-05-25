@@ -1,121 +1,111 @@
-## WeatherApp (DevOps Project 4)
+# 🌦️ WeatherApp: Advanced DevSecOps & Cloud-Native Deployment
 
-![Architecture](images/image.png)
+[![Architecture](images/image.png)](images/image.png)
 
-Overview
---------
-This repository contains a small multi-service Weather application used for DevOps exercises. It demonstrates service separation, containerization, CI/CD pipelines (GitHub Actions), static analysis (SonarQube), dependency scanning (OWASP Dependency-Check and Trivy), and Kubernetes manifests for deploying the services.
+A comprehensive, multi-service weather application demonstration project. This project showcases a modern cloud-native architecture, leveraging **Infrastructure as Code (Terraform)**, **DevSecOps Pipeline automation (GitHub Actions)**, and **GitOps-driven deployment (ArgoCD)** on **Google Kubernetes Engine (GKE)**.
 
-Services
---------
-- auth (Go): User authentication service that manages users and issues JWTs.
-  - Source: `auth/main/main.go`
-  - DB helper: `auth/authdb/authdb.go`
-  - Dockerfile: `auth/Dockerfile` (multi-stage build: golang builder -> minimal alpine runtime)
+---
 
-- UI (Node.js / Express): Frontend server serving static pages and interacting with auth and weather services.
-  - Source: `UI/app.js`, static UI in `UI/public`
-  - Package manifest: `UI/package.json`
-  - Dockerfile: `UI/Dockerfile`
+## 🏗️ Architecture Overview
 
-- weather (Python / Flask): A small service that calls a third-party Weather API (RapidAPI) and returns current weather data.
-  - Source: `weather/main.py`
-  - Dependencies: `weather/requirements.txt`
+The application follows a microservices pattern, designed for scalability and separation of concerns:
 
-- mysql-init: SQL initialization script for MySQL used in local K8s / Docker environments.
-  - `mysql-init/init.sql` creates the `weatherapp` schema and `users` table.
+-   **Frontend (UI):** A Node.js & Express application providing a responsive dashboard for users.
+-   **Authentication (Auth):** A high-performance Go service managing user sessions and JWT-based security.
+-   **Weather Core:** A Python/Flask microservice that interacts with third-party Weather APIs (RapidAPI).
+-   **Database:** A Managed MySQL instance (via StatefulSet) for secure data persistence.
 
-Kubernetes manifests
---------------------
-Kubernetes manifests for each service live under `kubernetes/` and `K8S/` directories (the repo contains multiple K8s folders used for different deployment flows). Example manifests used in CI/CD are under `kubernetes/`:
+---
 
-- `kubernetes/authentication/deployment.yaml` and `service.yaml` — deployment/service for the auth service
-- `kubernetes/ui/*` — UI deployment/service/ingress
-- `kubernetes/weather/*` — weather deployment and service
+## 🛠️ Technology Stack
 
-CI / CD (GitHub Actions)
-------------------------
-There are two main workflows in `.github/workflows/`:
+| Category | Tools & Technologies |
+| :--- | :--- |
+| **Cloud Provider** | Google Cloud Platform (GCP) |
+| **Infrastructure** | Terraform, Google Kubernetes Engine (GKE), VPC, Subnets |
+| **Microservices** | Go, Node.js (Express), Python (Flask) |
+| **Containerization** | Docker, Docker Hub |
+| **CI/CD** | GitHub Actions |
+| **GitOps** | ArgoCD, ArgoCD Image Updater |
+| **Security Scanning** | SonarQube, Trivy (Image Scan), OWASP Dependency-Check |
+| **Networking** | NGINX Ingress Controller, ClusterIP Services |
 
-- `ui-service.yml` — Serial pipeline for the UI service with these jobs:
-  1. build-and-test (npm ci, build, placeholder test)
- 2. sonar-scan (SonarQube analysis)
- 3. dependency-check (OWASP Dependency-Check)
- 4. docker-build (build Docker image, save as artifact)
- 5. trivy-scan (download artifact, docker load, scan image; uploads JSON report)
- 6. docker-push (download artifact, docker load, push to Docker Hub)
- 7. update-manifests (update K8s manifest image tags on `main`)
+---
 
-- `auth-service.yml` — Mirrors the UI pipeline but for the Go `auth` service:
-  - build-and-test (setup-go, go mod download, go build, go test)
-  - sonar-scan
-  - dependency-check
-  - docker-build (build image and save artifact)
-  - trivy-scan (download, load, scan, upload report)
-  - docker-push
+## 🚀 DevSecOps Pipeline
 
-CI Security & Diagnostics
-------------------------
-- Sonar: Workflows include SonarQube steps and print `.scannerwork/report-task.txt` for troubleshooting if the scanner fails to upload results.
-- Trivy: Workflows save the built Docker image as an artifact and load it into subsequent jobs. This avoids problems where Trivy can't find the image in the runner or pull remote images (MANIFEST_UNKNOWN). Trivy JSON reports are uploaded as job artifacts named `trivy-report` (UI) and `trivy-report-auth` (auth).
-- OWASP Dependency-Check: Runs on the project directory and uploads an HTML report as an artifact.
+The project implements a robust "Shift-Left" security approach through automated GitHub Actions pipelines for every service.
 
-Security remediation performed
-----------------------------
-- UI (Node.js):
-  - Added placeholder `build` and `test` scripts so CI/sonar steps run reliably.
-  - Ran `npm audit` and applied fixes, including `npm audit fix --force` to resolve transitive high/critical vulnerabilities. Key direct dependencies were updated (e.g., `axios`, `jsonwebtoken`) and `package-lock.json` was updated and committed.
+### Pipeline Stages:
+1.  **Build & Test:** Multi-stage Docker builds to ensure minimal footprint and high performance.
+2.  **Static Analysis (SAST):** Deep code inspection via **SonarQube** to identify bugs and code smells.
+3.  **SCA Scanning:** **OWASP Dependency-Check** scans libraries for known vulnerabilities.
+4.  **Container Auditing:** **Trivy** performs vulnerability scans on final Docker images.
+5.  **Automated Tagging:** Seamless push to Docker Hub with unique commit-based tags.
+6.  **Manifest Automation:** Automated updates to Kubernetes manifests in the repository to trigger GitOps sync.
 
-- Auth (Go):
-  - Replaced the old `dgrijalva/jwt-go` usage by adding `github.com/golang-jwt/jwt/v4` in `auth/go.mod`.
-  - Bumped `github.com/gin-contrib/cors` to `v1.6.0` to address known CVEs.
-  - Upgraded `golang.org/x/crypto` and `golang.org/x/net` to more recent versions (see `auth/go.mod`).
-  - Fixed a malformed `go` directive (`go 1.23.0` → `go 1.23`) so `go mod download` and CI builds run correctly.
+````carousel
+![SonarQube Results](images/image%20copy%204.png)
+<!-- slide -->
+![Trivy Scan Results](images/image%20copy%205.png)
+<!-- slide -->
+![Dependency Check](images/image%20copy%206.png)
+````
 
-Security TODOs (recommended, not yet implemented)
-------------------------------------------------
-- Replace MD5 password hashing in `auth/authdb/authdb.go` with bcrypt or Argon2.
-- Avoid building SQL via `fmt.Sprintf` — use prepared statements to prevent SQL injection.
-- Update JWT usages to the v4 API (`jwt.NewWithClaims`, `jwt.RegisteredClaims`) and enforce explicit signing methods.
+---
 
-How to run locally (quickstart)
--------------------------------
-1. Start a MySQL instance (e.g., Docker) and initialize the schema with `mysql-init/init.sql`.
+## ☸️ GitOps Deployment (ArgoCD)
 
-2. Run the auth service locally (in `auth/`):
+Deployment is strictly managed via **ArgoCD**, ensuring the cluster state always matches the repository's configuration.
+
+-   **Automated Sync:** Automated `prune` and `self-heal` policies for high availability.
+-   **Image Updater:** Automatically detects new Docker Hub images and propagates them to the K8s manifests via Git commits.
+-   **Namespace Isolation:** Separate namespaces for `ui`, `authentication`, and `weather`.
+
+![ArgoCD Dashboard](images/image%20copy%207.png)
+
+---
+
+## 🛠️ Recent Infrastructure Enhancements
+
+We have recently upgraded the production-readiness of the deployment:
+
+1.  **Traffic Routing:** Implemented an **NGINX Ingress Controller** for the UI, moving away from `NodePort` to a more secure `ClusterIP` architecture with centralized ingress.
+2.  **GKE Storage Fix:** Resolved a critical MySQL initialization error in GKE. Automated the cleanup of the system-generated `lost+found` directory via a dedicated `initContainer` in the StatefulSet, ensuring smooth database booting on persistent volumes.
+3.  **Security Patches:** Upgraded vulnerable Go JWT libraries and Node.js dependencies identified during SCA scanning.
+
+---
+
+## 🏁 Getting Started & Deployment
+
+### 1. Infrastructure Provisioning
+Navigate to the `Terraform/` directory and apply the configuration to spin up the GKE cluster:
 ```bash
-cd auth
-go mod tidy
-go build ./...
-./app # or go run ./main
+terraform init
+terraform plan
+terraform apply
 ```
 
-3. Run the weather service (in `weather/`):
+### 2. Configure Ingress
+Ensure the NGINX Ingress Controller is installed in your cluster. The UI Ingress is pre-configured in `K8S/ui/ingress.yaml`.
+
+### 3. ArgoCD Installation
+Deploy the application manifests using the ArgoCD definitions found in the `argocd/` directory:
 ```bash
-cd weather
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python main.py
+kubectl apply -f argocd/weather-app.yaml
 ```
 
-4. Run the UI (in `UI/`):
-```bash
-cd UI
-npm ci
-npm start
-```
+---
 
-CI Secrets (set these in your repository settings)
-------------------------------------------------
-- `SONAR_TOKEN`, `SONAR_HOST_URL` — SonarQube authentication and host
-- `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` — For pushing images
-- `APIKEY` — RapidAPI key used by the `weather` service (for local runs, set in env)
+## 📸 Project Gallery
 
-Notes and caveats
------------------
-- Docker image base selection impacts Trivy results: `node:20-alpine` and `alpine:latest` are used; image-level OS CVEs may still surface in Trivy scans depending on upstream patches.
-- `auth/authdb/authdb.go` currently uses MD5 hashing and unparameterized SQL — this is insecure for production and should be refactored (see TODOs above).
+````carousel
+![Service Dashboard](images/image%20copy%208.png)
+<!-- slide -->
+![Infrastructure Overview](images/image%20copy%209.png)
+<!-- slide -->
+![Network Topology](images/image%20copy%2010.png)
+````
 
-License
--------
-This project has no explicit license file. Add a LICENSE if you plan to open-source it.
+---
+*Created by [Mostafa Gheta](https://github.com/mostafagheta)*
